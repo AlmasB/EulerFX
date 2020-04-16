@@ -1,5 +1,6 @@
 package eulerfx.core.recomposition
 
+import eulerfx.core.creator.EulerDiagramCreator
 import eulerfx.core.euler.Zone
 import javafx.geometry.Point2D
 import math.geom2d.polygon.MultiPolygon2D
@@ -35,13 +36,13 @@ class PiercingData(numZones: Int, private val cluster: List<Zone>, private val a
             val map = cluster.map { it.polygon.vertices() }
                     .flatten()
                     .groupBy({ it.asInt })
-                    // we search for vertices present along 2 zone bounds (collisions)
+                    // we search for vertices present along 2 zone boundaries (collisions)
                     .filter { it.value.size >= numZones }
                     .filter { entry ->
                         cluster.all { it.polygon.vertices().map { it.asInt }.any { it.x == entry.key.x && it.y == entry.key.y } }
                     }
                     .map { Point2D(it.key.getX(), it.key.getY()) }
-                    // remove vertices that occur in other zone bounds
+                    // remove vertices that occur in other zone boundaries
                     // to filter out the corner vertices
                     .minus(
                             allZones.minus(cluster)
@@ -82,6 +83,6 @@ class PiercingData(numZones: Int, private val cluster: List<Zone>, private val a
                 }
                 .sorted()
                 // null occurs when we split a single curve?
-                .firstOrNull() ?: 1.0 // TODO: EulerDiagramCreator.BASE_RADIUS * 2
+                .firstOrNull() ?: EulerDiagramCreator.BASE_RADIUS * 2
     }
 }

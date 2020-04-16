@@ -7,21 +7,58 @@
 <?import javafx.scene.layout.*?>
 
 <?import javafx.scene.text.Text?>
+<?import eulerfx.app.Renderer?>
+<?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="eulerfx.app.AppController"
             prefHeight="720.0" prefWidth="1280.0">
 
-    <top>
-        <Text text="TOP" />
-    </top>
-
     <center>
-        <Pane fx:id="centerPane" />
+        <ScrollPane>
+            <Renderer fx:id="renderer" prefWidth="3840.0" prefHeight="2160.0" />
+        </ScrollPane>
     </center>
+
+    <top>
+        <HBox>
+            <MenuBar>
+                <Menu fx:id="menuFile" text="File" />
+            </MenuBar>
+
+            <MenuBar>
+                <Menu fx:id="menuEdit" text="Edit">
+                    <MenuItem text="Settings" onAction="#showSettingsDialog" />
+                </Menu>
+            </MenuBar>
+
+            <MenuBar>
+                <Menu fx:id="menuHelp" text="Help">
+                    <MenuItem text="About" onAction="#showAboutDialog" />
+                </Menu>
+            </MenuBar>
+
+            <TextField prefWidth="350" fx:id="fieldInput" onAction="#visualize" />
+        </HBox>
+    </top>
 
     <bottom>
         <Text text="BOT" />
     </bottom>
+
+    <left>
+        <VBox spacing="5.0">
+            <padding>
+                <Insets topRightBottomLeft="10.0" />
+            </padding>
+
+            <Button text="AB" />
+            <Button text="BC" />
+            <Button text="CD" />
+            <Button text="DE" />
+        </VBox>
+    </left>
+
+
 
 </BorderPane>

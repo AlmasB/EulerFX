@@ -10,4 +10,7 @@ module eulerfx.core {
     requires javaGeom;
     requires combinatoricslib3;
     requires org.jgrapht.core;
+
+    exports eulerfx.core.creator;
+    exports eulerfx.core.euler;
 }

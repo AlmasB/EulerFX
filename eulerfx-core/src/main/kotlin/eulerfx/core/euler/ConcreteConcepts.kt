@@ -1,14 +1,12 @@
 package eulerfx.core.euler
 
-import eulerfx.core.euler.curves.CircleCurve
+import eulerfx.core.algorithms.visualCenter
 import javafx.geometry.Point2D
-import javafx.geometry.Rectangle2D
 import javafx.scene.shape.Shape
 import math.geom2d.polygon.MultiPolygon2D
 import math.geom2d.polygon.Polygon2D
 import math.geom2d.polygon.Polygons2D
 import java.util.*
-import kotlin.math.sqrt
 
 /**
  * @author Almas Baimagambetov (almaslvl@gmail.com)
@@ -64,20 +62,20 @@ class Zone(
     /**
      * Curves inside this zone.
      */
-    val containingCurves = diagramCurves.filter { it.label in az }.toSet()
+    val containingCurves = diagramCurves.filter { it.label in az }.toSortedSet()
 
     /**
      * Curves outside of this zone.
      */
-    val excludingCurves = diagramCurves - containingCurves
+    val excludingCurves = (diagramCurves - containingCurves).toSortedSet()
 
     init {
         require(containingCurves.size == az.numLabels) { "Abstract: $az does not match concrete: $containingCurves" }
     }
 
     val shape by lazy { computeShape() }
-    val visualCenter by lazy { computeVisualCenter() }
     val polygon by lazy { computePolygon() }
+    val visualCenter by lazy { computeVisualCenter() }
 
     private fun computeShape(): Shape {
         val initialShape = containingCurves.map { it.shape }
@@ -89,26 +87,15 @@ class Zone(
     private fun computeVisualCenter(): Point2D {
         check (az != AbstractZone.OUTSIDE) { "Outside zone does not have a visual center" }
 
-        return Polylabel.findCenter(polygon)
+        return polygon.visualCenter()
     }
 
     private fun computePolygon(): Polygon2D {
-        var pShape = SettingsController.geomBBox
+        val initialPolygon = containingCurves.map { it.polygon }
+                .reduce { p1, p2 -> Polygons2D.intersection(p1, p2) }
 
-        containingCurves.map { c -> c.getPolygon() }.forEach { p -> pShape = Polygons2D.intersection(pShape, p) }
-
-        excludingCurves.map { c -> c.getPolygon() }.forEach { p -> pShape = Polygons2D.difference(pShape, p) }
-
-        return pShape
+        return excludingCurves.fold(initialPolygon) { p, curve -> Polygons2D.difference(p, curve.polygon) }
     }
-
-
-
-
-
-
-
-
 
     fun isTopologicallyAdjacent(other: Zone): Boolean {
         if (!az.isNeighbour(other.az))
@@ -161,14 +148,12 @@ class Zone(
  */
 class EulerDiagram(val originalDescription: Description,
                    val actualDescription: Description,
-                   curvesInternal: Set<Curve>) : Logable {
+                   curvesInternal: Set<Curve>) {
 
     val props = hashMapOf<Any, Any>()
 
-    //val curves: SortedSet<Curve> = Collections.unmodifiableSortedSet(curvesInternal.toSortedSet())
-    val curves = Collections.unmodifiableSet(curvesInternal)
+    val curves: SortedSet<Curve> = Collections.unmodifiableSortedSet(curvesInternal.toSortedSet())
 
-    // TODO: what is the reason for excluding azEmpty?
     /**
      * All zones of this Euler diagram, including shaded zones.
      * Does not include the outside zone.
@@ -179,157 +164,111 @@ class EulerDiagram(val originalDescription: Description,
 
     val outsideZone = Zone(AbstractZone.OUTSIDE, curves)
 
-    val numNonCircles = C(this).size - C(this).filter { it is CircleCurve }.size
-
     fun getZone(az: AbstractZone): Zone {
         if (az == azEmpty)
             return outsideZone
 
-        return zones.find { it.az == az } ?: throw Bug("No zone exists with abstraction $az")
+        return zones.find { it.az == az } ?: throw IllegalArgumentException("No zone exists with abstraction $az")
     }
 
-    fun drawIntoZone(az: AbstractZone, diagram: EulerDiagram, zoneScore: Int = 1): EulerDiagram {
-        Log.d("Drawing into $az", diagram)
 
-        // [diagram] will be embedded "to" this center point
-        val newCenter: Point2D
 
-        val scaleRatio: Double
-        val new_d: EulerDiagram
 
-        if (az == azEmpty) {
-            val bbox1 = this.bbox()
 
-            val bbox2 = diagram.bbox()
-            val diagramCenter = bbox2.center()
 
-            newCenter = diagramCenter.add(bbox1.maxX + 4000.0, 0.0)
 
-            scaleRatio = 1.0
 
-            val scaledCurves = diagram.curves.map { it.scale(scaleRatio, diagramCenter) }
 
-            val newCurves = curves.plus(scaledCurves.map { it.translate(newCenter.subtract(diagramCenter)) })
+// TODO:
+//    fun drawIntoZone(az: AbstractZone, diagram: EulerDiagram, zoneScore: Int = 1): EulerDiagram {
+//
+//        // [diagram] will be embedded "to" this center point
+//        val newCenter: Point2D
+//
+//        val scaleRatio: Double
+//        val new_d: EulerDiagram
+//
+//        if (az == azEmpty) {
+//            val bbox1 = this.bbox()
+//
+//            val bbox2 = diagram.bbox()
+//            val diagramCenter = bbox2.center()
+//
+//            newCenter = diagramCenter.add(bbox1.maxX + 4000.0, 0.0)
+//
+//            scaleRatio = 1.0
+//
+//            val scaledCurves = diagram.curves.map { it.scale(scaleRatio, diagramCenter) }
+//
+//            val newCurves = curves.plus(scaledCurves.map { it.translate(newCenter.subtract(diagramCenter)) })
+//
+//            new_d = EulerDiagram(originalDescription + diagram.originalDescription, actualDescription + diagram.actualDescription, newCurves)
+//
+//        } else {
+//            val zone = zones.find { it.az == az } ?: throw Bug("No zone $az found in $this")
+//
+//            newCenter = zone.visualCenter
+//
+//            val minRadius: Double = zone.shortestDistanceToOtherZone(newCenter)
+//
+//            val bbox = diagram.bbox()
+//            val diagramCenter = bbox.center()
+//
+//            val actualRadius = maxOf(bbox.width, bbox.height)
+//
+//            // we are embedding into az, so score of az can never be 0
+//            scaleRatio = minRadius / actualRadius / maxOf(sqrt(zoneScore.toDouble()) * 0.5, 0.75)
+//
+//            val scaledCurves = diagram.curves.map { it.scale(scaleRatio, diagramCenter) }
+//
+//            val newCurves = curves.plus(scaledCurves.map { it.translate(newCenter.subtract(diagramCenter)) })
+//
+//            new_d = EulerDiagram(originalDescription + diagram.originalDescription, actualDescription + diagram.actualDescription, newCurves)
+//        }
+//
+//        if (az != azEmpty) {
+//            new_d.curves.filter { it.label in diagram.curves.map { it.label } }.forEach { new_d.updateLabelPosition(it) }
+//        }
+//
+//        new_d.props["embedCenter"] = newCenter
+//        new_d.props["scaleRatio"] = scaleRatio
+//        return new_d
+//    }
+//
+//    fun bbox(): Rectangle2D {
+//        val polygons = curves.map { it.getPolygon() }
+//        val vertices = polygons.flatMap { it.vertices() }
+//
+//        val minX = vertices.minBy { it.x() }!!.x()
+//        val minY = vertices.minBy { it.y() }!!.y()
+//        val maxX = vertices.maxBy { it.x() }!!.x()
+//        val maxY = vertices.maxBy { it.y() }!!.y()
+//
+//        return Rectangle2D(minX, minY, maxX - minX, maxY - minY)
+//    }
+//
+//    fun size(): Double {
+//        val bbox = bbox()
+//        return maxOf(bbox.width, bbox.height)
+//    }
+//
+//    fun center(): Point2D {
+//        val bbox = bbox()
+//        return Point2D(bbox.minX + bbox.maxX / 2, bbox.minY + bbox.maxY / 2)
+//    }
 
-            new_d = EulerDiagram(originalDescription + diagram.originalDescription, actualDescription + diagram.actualDescription, newCurves)
 
-        } else {
-            val zone = zones.find { it.az == az } ?: throw Bug("No zone $az found in $this")
 
-            newCenter = zone.visualCenter
 
-            val minRadius: Double = zone.shortestDistanceToOtherZone(newCenter)
 
-            val bbox = diagram.bbox()
-            val diagramCenter = bbox.center()
 
-            val actualRadius = maxOf(bbox.width, bbox.height)
-
-            // we are embedding into az, so score of az can never be 0
-            scaleRatio = minRadius / actualRadius / maxOf(sqrt(zoneScore.toDouble()) * 0.5, 0.75)
-
-            val scaledCurves = diagram.curves.map { it.scale(scaleRatio, diagramCenter) }
-
-            val newCurves = curves.plus(scaledCurves.map { it.translate(newCenter.subtract(diagramCenter)) })
-
-            new_d = EulerDiagram(originalDescription + diagram.originalDescription, actualDescription + diagram.actualDescription, newCurves)
-        }
-
-        if (az != azEmpty) {
-            new_d.curves.filter { it.label in diagram.curves.map { it.label } }.forEach { new_d.updateLabelPosition(it) }
-        }
-
-        new_d.props["embedCenter"] = newCenter
-        new_d.props["scaleRatio"] = scaleRatio
-        return new_d
-    }
-
-    private fun updateLabelPosition(curve: Curve) {
-        val otherCurves = C(this).minus(curve)
-        val polygon = curve.polygon
-        val center = polygon.centroid()
-
-        val labelPos = polygon.vertices()
-                .map { Point2D(it.x(), it.y()) }
-                .map {
-                    val magnitude = capMagnitude(if (curve is CircleCurve) curve.radius / 3 else 150.0)
-
-                    val r = if (curve is CircleCurve) curve.radius else 0.0
-
-                    //println(magnitude)
-
-                    // compute vector outwards
-                    it.add(it.subtract(center.x(), center.y()).normalize().multiply(magnitude))
-                }
-                .sortedBy {
-                    val minDistance = minDistanceToOtherCurves(it, otherCurves)
-                    val numCurves = numCurvesThatContainPoint(it, otherCurves)
-
-                    // number of curves has a more significant impact
-                    2000 * numCurves - minDistance
-                }
-                .first()!!
-
-        //println("Curve $curve: " + distancePolygonPoint(polygon, labelPos))
-        //SettingsController.debugPoints.add(labelPos)
-
-        curve.setLabelPositionX(labelPos.x)
-        curve.setLabelPositionY(labelPos.y)
-    }
-
-    private fun capMagnitude(mag: Double): Double {
-        if (mag > 300)
-            return 300.0
-
-        if (mag < 150)
-            return 150.0
-
-        return mag
-    }
-
-    private fun numCurvesThatContainPoint(point: Point2D, curves: Set<Curve>) = curves.count { it.shape.contains(point) }
-
-    private fun minDistanceToOtherCurves(point: Point2D, curves: Set<Curve>): Double {
-        return curves.map { it.polygon.boundary().signedDistance(point.x, point.y) }
-                // -20 is threshold on how "close" we think it is
-                // because of polygon <-> smooth representations we might lose precision
-                .filter { it >= -20 }
-                .min()
-                ?: 0.0
-    }
-
-    fun bbox(): Rectangle2D {
-        val polygons = curves.map { it.getPolygon() }
-        val vertices = polygons.flatMap { it.vertices() }
-
-        val minX = vertices.minBy { it.x() }!!.x()
-        val minY = vertices.minBy { it.y() }!!.y()
-        val maxX = vertices.maxBy { it.x() }!!.x()
-        val maxY = vertices.maxBy { it.y() }!!.y()
-
-        return Rectangle2D(minX, minY, maxX - minX, maxY - minY)
-    }
-
-    fun size(): Double {
-        val bbox = bbox()
-        return maxOf(bbox.width, bbox.height)
-    }
-
-    fun center(): Point2D {
-        val bbox = bbox()
-        return Point2D(bbox.minX + bbox.maxX / 2, bbox.minY + bbox.maxY / 2)
-    }
 
     fun translate(vector: Point2D): EulerDiagram {
         return EulerDiagram(originalDescription, actualDescription, curves.map { it.translate(vector) }.toSet())
     }
 
-    fun scale(pivot: Point2D, ratio: Double): EulerDiagram {
+    fun scale(ratio: Double, pivot: Point2D): EulerDiagram {
         return EulerDiagram(originalDescription, actualDescription, curves.map { it.scale(ratio, pivot) }.toSet())
-    }
-
-    override fun toLog(): String {
-        return "ED[o=$originalDescription, actual=$actualDescription, curves=$curves, zones=$zones]"
     }
 
     override fun hashCode(): Int {

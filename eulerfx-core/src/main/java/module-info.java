@@ -6,6 +6,8 @@ module eulerfx.core {
     requires transitive javafx.base;
     requires transitive javafx.graphics;
 
+    requires java.desktop;
     requires javaGeom;
-
+    requires combinatoricslib3;
+    requires org.jgrapht.core;
 }

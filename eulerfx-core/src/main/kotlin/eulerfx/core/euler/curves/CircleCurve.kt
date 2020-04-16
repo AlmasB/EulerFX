@@ -1,6 +1,6 @@
 package eulerfx.core.euler.curves
 
-import groupnet.algorithm.Converter
+import eulerfx.core.algorithms.Converter
 import eulerfx.core.euler.Curve
 import eulerfx.core.euler.Label
 import javafx.geometry.Point2D

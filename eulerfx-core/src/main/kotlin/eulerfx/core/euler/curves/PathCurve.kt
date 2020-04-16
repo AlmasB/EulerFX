@@ -2,8 +2,6 @@ package eulerfx.core.euler.curves
 
 import eulerfx.core.euler.Curve
 import eulerfx.core.euler.Label
-import groupnet.gui.SettingsController
-import javafx.scene.paint.Color
 import javafx.scene.shape.*
 import math.geom2d.Point2D
 import math.geom2d.polygon.Polygon2D
@@ -18,32 +16,14 @@ import java.util.*
 class PathCurve(label: Label,
                 val path: Path) : Curve(label) {
 
-    private val cachedToString: String
+    private val cachedToString = path.elements.toString()
 
     init {
-        path.elements.addAll(ClosePath())
-        path.fill = Color.TRANSPARENT
-
-        // new
-//        path.stroke = Color.DARKBLUE
-//        path.strokeWidth = 2.0
-
-        cachedToString = path.elements.toString()
+        // TODO:
+        //path.elements.addAll(ClosePath())
     }
 
-    override fun computeShape(): Shape {
-        val bbox = Rectangle(10000.0, 10000.0)
-        bbox.translateX = -3000.0
-        bbox.translateY = -3000.0
-
-        val shape = Shape.intersect(SettingsController.fxBBox, path)
-        shape.fill = Color.TRANSPARENT
-        shape.stroke = Color.DARKBLUE
-        shape.strokeWidth = 2.0
-
-        return shape
-        //return path
-    }
+    override fun computeShape(): Shape = path
 
     override fun computePolygon(): Polygon2D {
         val moveTo = path.elements[0] as MoveTo
@@ -56,22 +36,6 @@ class PathCurve(label: Label,
         // drop moveTo and close()
         path.elements.drop(1).dropLast(1).forEach {
             when (it) {
-                is QuadCurveTo -> {
-                    val smoothFactor = 10
-                    val p1 = polygonPoints.last()
-                    val p2 = Point2D(it.controlX, it.controlY)
-                    val p3 = Point2D(it.x, it.y)
-
-                    var t = 0.01
-                    while (t < 1.01) {
-
-                        polygonPoints.add(getQuadValue(p1, p2, p3, t))
-                        t += 1.0 / smoothFactor
-                    }
-
-                    polygonPoints.add(p3)
-                }
-
                 is CubicCurveTo -> {
                     val smoothFactor = 10
                     val p1 = polygonPoints.last()
@@ -106,58 +70,10 @@ class PathCurve(label: Label,
         return SimplePolygon2D(polygonPoints)
     }
 
-    private fun getQuadValue(p1: Point2D, p2: Point2D, p3: Point2D, t: Double): Point2D {
-        val x = (1 - t) * (1 - t) * p1.x() + 2 * (1 - t) * t * p2.x() + t * t * p3.x()
-        val y = (1 - t) * (1 - t) * p1.y() + 2 * (1 - t) * t * p2.y() + t * t * p3.y()
-
-        return Point2D(x, y)
-    }
-
     private fun getCubicValue(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D, t: Double): Point2D {
         val x = Math.pow(1 - t, 3.0) * p1.x + 3 * t * Math.pow(1 - t, 2.0) * p2.x + 3 * t*t * (1 - t) * p3.x + t*t*t*p4.x
         val y = Math.pow(1 - t, 3.0) * p1.y + 3 * t * Math.pow(1 - t, 2.0) * p2.y + 3 * t*t * (1 - t) * p3.y + t*t*t*p4.y
         return Point2D(x, y)
-    }
-
-    override fun copyWithNewLabel(newLabel: String): Curve {
-        val copyPath = Path()
-
-        path.elements.forEach {
-            val element: PathElement = when (it) {
-
-                is QuadCurveTo -> {
-                    QuadCurveTo(it.controlX, it.controlY, it.x, it.y)
-                }
-
-                is CubicCurveTo -> {
-                    CubicCurveTo(it.controlX1, it.controlY1, it.controlX2, it.controlY2, it.x, it.y)
-                }
-
-                is LineTo -> {
-                    LineTo(it.x, it.y)
-                }
-
-                is MoveTo -> {
-                    MoveTo(it.x, it.y)
-                }
-
-                is ClosePath -> {
-                    ClosePath()
-                }
-
-                else -> {
-                    throw IllegalArgumentException("Unknown path element: $it")
-                }
-            }
-
-            copyPath.elements.add(element)
-        }
-
-        val copy = PathCurve(newLabel, copyPath)
-        copy.setLabelPositionX(getLabelPositionX())
-        copy.setLabelPositionY(getLabelPositionY())
-
-        return copy
     }
 
     override fun translate(translate: javafx.geometry.Point2D): Curve {
@@ -194,11 +110,7 @@ class PathCurve(label: Label,
             copyPath.elements.add(element)
         }
 
-        val copy = PathCurve(label, copyPath)
-        copy.setLabelPositionX(getLabelPositionX() + translate.x)
-        copy.setLabelPositionY(getLabelPositionY() + translate.y)
-
-        return copy
+        return PathCurve(label, copyPath)
     }
 
     override fun scale(scale: Double, pivot: javafx.geometry.Point2D): Curve {
@@ -238,10 +150,7 @@ class PathCurve(label: Label,
             copyPath.elements.add(element)
         }
 
-        val scaled = PathCurve(label, copyPath)
-        scaled.setLabelPositionX(getLabelPositionX() * scale + (1-scale) * pivot.x)
-        scaled.setLabelPositionY(getLabelPositionY() * scale + (1-scale) * pivot.y)
-        return scaled
+        return PathCurve(label, copyPath)
     }
 
     override fun equals(other: Any?): Boolean {

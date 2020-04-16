@@ -132,17 +132,6 @@ class AbstractZoneTest {
     }
 
     @Test
-    fun `Formal`() {
-        val az1 = az("ab")
-        assertThat(az1.toFormal(), `is`("{a,b}"))
-
-        val az2 = az("bca")
-        assertThat(az2.toFormal(), `is`("{a,b,c}"))
-
-        assertThat(azEmpty.toFormal(), `is`("{}"))
-    }
-
-    @Test
     fun `Informal`() {
         val az1 = az("ab")
         assertThat(az1.toInformal(), `is`("ab"))
@@ -158,7 +147,7 @@ class AbstractZoneTest {
         assertNotEquals(zone1.toString(), zone2.toString())
         assertEquals(zone1.toString(), zone3.toString())
 
-        assertEquals("{a}", zone1.toString())
-        assertEquals("{a,b}", zone2.toString())
+        assertEquals("a", zone1.toString())
+        assertEquals("ab", zone2.toString())
     }
 }

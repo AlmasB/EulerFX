@@ -1,12 +1,12 @@
 package eulerfx.core.euler.dual
 
-import groupnet.algorithm.AStarEdgeRouter
-import groupnet.algorithm.Converter
+import eulerfx.core.algorithms.AStarEdgeRouter
+import eulerfx.core.algorithms.Converter
+import eulerfx.core.algorithms.combinations2
+import eulerfx.core.algorithms.cycles.CycleFinder
 import eulerfx.core.euler.*
-import groupnet.graph.cycles.CycleFinder
-import groupnet.gui.SettingsController
-import groupnet.util.*
 import javafx.geometry.Point2D
+import javafx.geometry.Rectangle2D
 import javafx.scene.paint.Color
 import javafx.scene.shape.*
 import math.geom2d.polygon.SimplePolygon2D
@@ -19,33 +19,30 @@ import java.util.*
  */
 class MED(private val d: EulerDiagram) {
 
-    lateinit var vertices: MutableList<MEDVertex>
-    lateinit var edges: MutableList<MEDEdge>
+    val vertices: MutableList<MEDVertex>
+    val edges: MutableList<MEDEdge>
 
     private lateinit var outsideNodes: List<MEDVertex>
 
     val ring = Circle(0.0, null)
 
     init {
-        computeInsideVertices()
-        computeInsideEdges()
+        vertices = computeInsideVertices()
+        edges = computeInsideEdges()
+
         computeOutsideVertices()
         computeOutsideEdges()
     }
 
-    private fun computeInsideVertices() {
-        vertices = d.zones.map { z -> MEDVertex(z, z.visualCenter) }.toMutableList()
-
-        vertices.forEach { it.isShown = true }
+    private fun computeInsideVertices(): MutableList<MEDVertex> {
+        return d.zones.map { z -> MEDVertex(z, z.visualCenter) }.toMutableList()
     }
 
-    private fun computeInsideEdges() {
-        edges = combinations2(vertices)
+    private fun computeInsideEdges(): MutableList<MEDEdge> {
+        return combinations2(vertices)
                 .filter { (v1, v2) -> v1.zone.isTopologicallyAdjacent(v2.zone) }
                 .map { (v1, v2) -> createEdge(v1, v2) }
                 .toMutableList()
-
-        edges.forEach { it.isShown = true }
     }
 
     private fun computeOutsideVertices() {
@@ -63,8 +60,25 @@ class MED(private val d: EulerDiagram) {
         // make "distinct" nodes so that jgrapht doesn't think it's a loop
         // TODO: it shouldn't since we also check points, which ARE different
         outsideNodes = polygonMED.vertices().map { MEDVertex(Zone(azEmpty, d.curves), Point2D(it.x(), it.y()).add(vector)) }
+    }
 
-        SettingsController.debugPoints.addAll(outsideNodes.map { it.point })
+    private fun Rectangle2D.center(): Point2D {
+        return Point2D((this.minX + this.maxX) / 2, (this.minY + this.maxY) / 2)
+    }
+
+    private fun Rectangle2D.distToCorner(): Double {
+        return Math.sqrt(this.width * this.width + this.height * this.height) / 2
+    }
+
+    private fun bbox(zones: Collection<Zone>): Rectangle2D {
+        val bounds = zones.map { it.polygon.boundingBox() }
+
+        val minX = bounds.map { it.minX }.min()!!
+        val minY = bounds.map { it.minY }.min()!!
+        val maxX = bounds.map { it.maxX }.max()!!
+        val maxY = bounds.map { it.maxY }.max()!!
+
+        return Rectangle2D(minX, minY, maxX - minX, maxY - minY)
     }
 
     private fun computeOutsideEdges() {
@@ -74,11 +88,8 @@ class MED(private val d: EulerDiagram) {
                 .forEach { node ->
                     val closestMEDNode = outsideNodes.minBy { it.distance(node) }!!
 
-                    closestMEDNode.isShown = true
-
                     val edge = MEDEdge(node, closestMEDNode,
                             Line(node.point.x, node.point.y, closestMEDNode.point.x, closestMEDNode.point.y))
-                    edge.isShown = true
 
                     edges.add(edge)
                 }
@@ -93,8 +104,6 @@ class MED(private val d: EulerDiagram) {
      * Creates an Euler dual edge between [v1] and [v2] represented by a polyline.
      */
     private fun createEdge(v1: MEDVertex, v2: MEDVertex): MEDEdge {
-        Log.d("Creating edge: ${v1.zone} - ${v2.zone}")
-
         val p1 = v1.zone.visualCenter
         val p2 = v2.zone.visualCenter
 
@@ -102,9 +111,7 @@ class MED(private val d: EulerDiagram) {
 
         // the new curve segment must pass through the straddled curve
         // and only through that curve
-        val curve = v1.zone.getSeparatingCurve(v2.zone) ?: throw Bug("Zones are not adjacent")
-
-        Log.d("Searching ${v1.zone} - ${v2.zone} : $curve")
+        val curve = v1.zone.getSeparatingCurve(v2.zone) ?: throw IllegalArgumentException("Zones are not adjacent")
 
         if (doesSegmentPassThroughCurveOnly(line, curve, C(d))) {
             return MEDEdge(v1, v2, line)
@@ -129,7 +136,7 @@ class MED(private val d: EulerDiagram) {
      * @return true iff [segment] (line-ish shape) overlaps (crosses) with a closed [curve]
      */
     private fun segmentOverlapsCurve(segment: Shape, curve: Curve): Boolean {
-        val curveShape = curve.getShape()
+        val curveShape = curve.shape
 
         val originalFill = curveShape.fill
         val originalStroke = curveShape.stroke
@@ -173,33 +180,9 @@ class MED(private val d: EulerDiagram) {
         }
     }
 
-    fun computeCycle(zonesToSplit: Set<AbstractZone>, azPair: Pair<AbstractZone, AbstractZone>?): MEDCycle? {
-        if (azPair == null)
-            return computeCycle(zonesToSplit)
-
-        Log.d("Computing cycle for $zonesToSplit")
-
-        Profiler.start("Enumerating cycles")
-        val cycles = enumerateCycles()
-        Profiler.end("Enumerating cycles")
-
-        Log.d("Found cycles: ${cycles.size} for $zonesToSplit")
-
-        //        check that cycle nodes are equal or superset of what is required      cycle selection      and is valid
-        return cycles.find { it.nodes.map { it.zone.az }.containsAll(zonesToSplit) && isValid(azPair, it) }
-    }
-
     fun computeCycle(zonesToSplit: Set<AbstractZone>): MEDCycle? {
-        Log.d("Computing cycle for $zonesToSplit")
-
-        Profiler.start("Enumerating cycles")
-        val cycles = enumerateCycles()
-        Profiler.end("Enumerating cycles")
-
-        Log.d("Found cycles: ${cycles.size} for $zonesToSplit")
-
         //        check that cycle nodes are equal or superset of what is required        and is valid
-        return cycles.find { it.nodes.map { it.zone.az }.containsAll(zonesToSplit) && isValid(null, it) }
+        return enumerateCycles().find { it.nodes.map { it.zone.az }.containsAll(zonesToSplit) && isValid(it) }
     }
 
     /**
@@ -216,14 +199,11 @@ class MED(private val d: EulerDiagram) {
     /**
      * A cycle is valid if it can be used to embed a curve.
      */
-    private fun isValid(azPair: Pair<AbstractZone, AbstractZone>?, cycle: MEDCycle): Boolean {
-        Log.d("Checking cycle: $cycle")
-
+    private fun isValid(cycle: MEDCycle): Boolean {
         // this ensures that we do not allow same vertices in the cycle
         // unless it's the outside vertex
         cycle.nodes.groupBy { it.zone.az }.forEach {
             if (it.key != azEmpty && it.value.size > 1) {
-                Log.d("Discarding cycle because ${it.key} is present ${it.value.size} times")
                 return false
             }
         }
@@ -289,16 +269,13 @@ class MED(private val d: EulerDiagram) {
                 }
 
                 else -> {
-                    throw Bug("Unknown edge shape: $q")
+                    throw IllegalArgumentException("Unknown edge shape: $q")
                 }
             }
         }
 
-
-
         // drop last duplicate of first moveTO
         val lastPt = cycle.polygon.removeAt(cycle.polygon.size - 1)
-
 
         cycle.polygon = cycle.polygon.distinct().toMutableList()
 
@@ -314,23 +291,17 @@ class MED(private val d: EulerDiagram) {
         if (hasInside)
             return false
 
-        if (azPair != null) {
-            println(azPair)
-            val v1 = cycle.nodesUnique().find { it.zone.az == azPair.first }
-            val v2 = cycle.nodesUnique().find { it.zone.az == azPair.second }
-
-            if (v1 != null && v2 != null) {
-                val midpoint = v1.point.midpoint(v2.point)
-
-                if (polygon.contains(midpoint.x, midpoint.y)) {
-                    println("Contains $midpoint")
-                    return false
-                }
-            }
-        }
-
-        Log.d("Cycle is valid")
-        Log.d("Smoothing data: ${cycle.polygon.joinToString { "" + it.x + " " + it.y  }}")
         return true
     }
+}
+
+private fun vectorToAngle(v: Point2D): Double {
+    var angle = -Math.toDegrees(Math.atan2(v.y, v.x))
+
+    if (angle < 0) {
+        val delta = 180 - (-angle)
+        angle = delta + 180
+    }
+
+    return angle
 }

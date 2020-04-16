@@ -8,3 +8,4 @@ package eulerfx.core.euler
 fun <T> Set<T>.symmetricDifference(other: Set<T>): Set<T> {
     return (this - other) + (other - this)
 }
+

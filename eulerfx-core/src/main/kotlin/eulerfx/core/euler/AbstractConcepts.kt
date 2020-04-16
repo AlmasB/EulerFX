@@ -97,7 +97,7 @@ class Description(abstractZones: Set<AbstractZone>) {
      * Parent abstract zone.
      */
     var parent = AbstractZone.OUTSIDE
-        private set
+        internal set
 
     fun getNumAZonesIn(label: Label) = abstractZones.filter { label in it }.count()
 

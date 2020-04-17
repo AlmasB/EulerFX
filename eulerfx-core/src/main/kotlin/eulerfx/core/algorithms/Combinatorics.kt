@@ -1,6 +1,7 @@
 package eulerfx.core.algorithms
 
 import org.paukov.combinatorics3.Generator
+import java.util.stream.Stream
 
 /**
  *
@@ -70,4 +71,10 @@ fun <T> partition2Lazy(elements: Collection<T>): Iterable< Pair<List<T>, List<T>
             }
         }
     }
+}
+
+fun <T> partition2LazyStream(elements: Collection<T>): Stream< Pair<List<T>, List<T>> > {
+    val iter = partition2Lazy(elements).iterator()
+
+    return Stream.iterate(iter.next(), { iter.hasNext() }, { iter.next() })
 }

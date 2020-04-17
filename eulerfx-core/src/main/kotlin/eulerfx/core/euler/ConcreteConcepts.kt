@@ -2,6 +2,7 @@ package eulerfx.core.euler
 
 import eulerfx.core.algorithms.visualCenter
 import javafx.geometry.Point2D
+import javafx.geometry.Rectangle2D
 import javafx.scene.shape.Shape
 import math.geom2d.polygon.MultiPolygon2D
 import math.geom2d.polygon.Polygon2D
@@ -91,10 +92,27 @@ class Zone(
     }
 
     private fun computePolygon(): Polygon2D {
-        val initialPolygon = containingCurves.map { it.polygon }
-                .reduce { p1, p2 -> Polygons2D.intersection(p1, p2) }
+        val initialPolygon =
+                if (az != AbstractZone.OUTSIDE) {
+                    containingCurves.map { it.polygon }
+                            .reduce { p1, p2 -> Polygons2D.intersection(p1, p2) }
+                } else {
+                    bbox()
+                }
 
         return excludingCurves.fold(initialPolygon) { p, curve -> Polygons2D.difference(p, curve.polygon) }
+    }
+
+    private fun bbox(): math.geom2d.polygon.Rectangle2D {
+        val polygons = excludingCurves.map { it.polygon }
+        val vertices = polygons.flatMap { it.vertices() }
+
+        val minX = vertices.minBy { it.x() }!!.x()
+        val minY = vertices.minBy { it.y() }!!.y()
+        val maxX = vertices.maxBy { it.x() }!!.x()
+        val maxY = vertices.maxBy { it.y() }!!.y()
+
+        return math.geom2d.polygon.Rectangle2D(minX, minY, maxX - minX, maxY - minY)
     }
 
     fun isTopologicallyAdjacent(other: Zone): Boolean {

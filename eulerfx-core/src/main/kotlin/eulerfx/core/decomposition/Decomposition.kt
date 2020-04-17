@@ -318,4 +318,4 @@ private fun disconnectedSubgraphsSize(zones: List<AbstractZone>): Int {
     return inspector.connectedSets().size
 }
 
-private class ZoneEdge(val az1: AbstractZone, val az2: AbstractZone)
+internal class ZoneEdge(val az1: AbstractZone, val az2: AbstractZone)

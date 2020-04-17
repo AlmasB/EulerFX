@@ -14,4 +14,5 @@ module eulerfx.core {
     exports eulerfx.core.algorithms;
     exports eulerfx.core.creator;
     exports eulerfx.core.euler;
+    exports eulerfx.core.util;
 }

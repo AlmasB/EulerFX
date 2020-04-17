@@ -3,6 +3,8 @@ package eulerfx.core.creator
 import eulerfx.core.algorithms.smoothPath
 import eulerfx.core.decomposition.dec
 import eulerfx.core.decomposition.decA
+import eulerfx.core.decomposition.isAtomic
+import eulerfx.core.decomposition.isConnected
 import eulerfx.core.euler.*
 import eulerfx.core.euler.curves.CircleCurve
 import eulerfx.core.euler.curves.PathCurve
@@ -11,6 +13,7 @@ import eulerfx.core.euler.dual.MEDCycle
 import eulerfx.core.recomposition.PiercingData
 import eulerfx.core.recomposition.RecompositionStep
 import eulerfx.core.util.Log
+import eulerfx.core.util.Profiler
 import javafx.geometry.Point2D
 import javafx.geometry.Rectangle2D
 import javafx.scene.paint.Color
@@ -59,11 +62,27 @@ class EulerDiagramCreator {
     private var d: EulerDiagram = EulerDiagram(D0, D0, emptySet())
 
     fun drawEulerDiagram(D: Description): EulerDiagram {
+        if (isConnected(Z(D).toList() - azEmpty)) {
+            Profiler.start("dec()")
+            val dec = dec(D).reversed()
+            Profiler.end("dec()")
+
+            return drawAtomicDiagram(D, dec)
+        }
+
+        Profiler.start("decA()")
+
         val components = decA(D)
+
+        Profiler.end("decA()")
 
         // D is atomic
         if (components.size == 1) {
-            return drawAtomicDiagram(D, dec(D).reversed())
+            Profiler.start("dec()")
+            val dec = dec(D).reversed()
+            Profiler.end("dec()")
+
+            return drawAtomicDiagram(D, dec)
         }
 
         val diagrams = components.map { EulerDiagramCreator().drawAtomicDiagram(it, dec(it).reversed()) }
@@ -157,8 +176,13 @@ class EulerDiagramCreator {
     // val steps = dec.steps
     private fun drawAtomicDiagram(D: Description, steps: List<RecompositionStep>): EulerDiagram {
         steps.forEach { data ->
+
+            Profiler.start("drawCurve: ${data.newLabel}")
+
             val curve = drawCurve(data)
             d = EulerDiagram(D, D(abstractZones + azEmpty, D.parent), d.curves + curve)
+
+            Profiler.end("drawCurve: ${data.newLabel}")
         }
 
         return d
@@ -173,8 +197,6 @@ class EulerDiagramCreator {
      * 4. updates abstract zones
      */
     private fun drawCurve(data: RecompositionStep): Curve {
-        Log.i("Drawing curve: ${data.newLabel}")
-
         var curve: Curve? = null
 
         if (numCurvesSoFar() == 0) {
@@ -188,10 +210,6 @@ class EulerDiagramCreator {
 
         } else if (data.isNested()) {
             throw IllegalArgumentException("Nested curve [$data] cannot exist in an atomic diagram")
-
-            //val az1 = data.splitZones.first()
-
-
         }
 
         if (curve != null) {
@@ -205,7 +223,7 @@ class EulerDiagramCreator {
             curve = when (cycle.lengthUnique()) {
                 2 -> drawSinglePiercing(data.newLabel, cycle.nodesUnique().map { it.zone })
 
-            // here a 2node or 3node cycle was upgraded to 4node
+                // here a 2node or 3node cycle was upgraded to 4node
                 4 -> drawDoublePiercing(data.newLabel, cycle.nodesUnique().map { it.zone })
 
                 else -> PathCurve(data.newLabel, smooth(cycle))
@@ -226,35 +244,25 @@ class EulerDiagramCreator {
         }
 
         // we include outsideZone in case
-        val piercingData = PiercingData(2, data.splitZones.map { d.getZone(it) }, d.zones.toList())
+        val piercingData = PiercingData(2, data.splitZones.map { d.getZone(it) }, d.zones.plus(d.outsideZone).toList())
         if (!piercingData.isPiercing())
             return null
 
-        val splitZones = data.splitZones.toList()
-
-        val az0 = splitZones[0]
-        val az1 = splitZones[1]
-
-        val newZones = data.splitZones.map { it + (data.newLabel) }
-
-        val az2 = newZones[0]
-        val az3 = newZones[1]
-
-        return CircleCurve(data.newLabel, piercingData.center!!.x, piercingData.center!!.y, piercingData.radius / RADIUS_REDUCTION)
+        return CircleCurve(data.newLabel, piercingData.center!!.x, piercingData.center.y, piercingData.radius / RADIUS_REDUCTION)
     }
 
     private fun tryDrawDoublePiercing(data: RecompositionStep): Curve? {
+        if (numCurvesSoFar() == 2) {
+            // special case: use slightly better position and size
+            return CircleCurve(data.newLabel, BASE_RADIUS * 1.5, BASE_RADIUS * 2, BASE_RADIUS)
+        }
+
         // we don't include outsideZone because there are other zones that bound
         val piercingData = PiercingData(4, data.splitZones.map { d.getZone(it) }, d.zones.toList())
         if (!piercingData.isPiercing())
             return null
 
-        return if (numCurvesSoFar() == 2) {
-            // special: use slightly better position and size
-            CircleCurve(data.newLabel, BASE_RADIUS * 1.5, BASE_RADIUS * 2, BASE_RADIUS)
-        } else {
-            CircleCurve(data.newLabel, piercingData.center!!.x, piercingData.center.y, piercingData.radius / RADIUS_REDUCTION)
-        }
+        return CircleCurve(data.newLabel, piercingData.center!!.x, piercingData.center.y, piercingData.radius / RADIUS_REDUCTION)
     }
 
     private fun drawSinglePiercing(abstractCurve: Label, regions: List<Zone>): Curve {

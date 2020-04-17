@@ -33,12 +33,17 @@
             </MenuBar>
 
             <MenuBar>
+                <Menu fx:id="menuExamples" text="Examples">
+                </Menu>
+            </MenuBar>
+
+            <MenuBar>
                 <Menu fx:id="menuHelp" text="Help">
                     <MenuItem text="About" onAction="#showAboutDialog" />
                 </Menu>
             </MenuBar>
 
-            <TextField prefWidth="350" fx:id="fieldInput" onAction="#visualize" />
+            <TextField prefWidth="750" fx:id="fieldInput" onAction="#visualize" />
         </HBox>
     </top>
 

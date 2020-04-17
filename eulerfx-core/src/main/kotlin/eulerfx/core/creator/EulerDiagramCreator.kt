@@ -226,7 +226,7 @@ class EulerDiagramCreator {
         }
 
         // we include outsideZone in case
-        val piercingData = PiercingData(2, data.splitZones.map { d.getZone(it) }, d.zones.plus(d.outsideZone).toList())
+        val piercingData = PiercingData(2, data.splitZones.map { d.getZone(it) }, d.zones.toList())
         if (!piercingData.isPiercing())
             return null
 

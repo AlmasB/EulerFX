@@ -11,6 +11,7 @@ module eulerfx.core {
     requires combinatoricslib3;
     requires org.jgrapht.core;
 
+    exports eulerfx.core.algorithms;
     exports eulerfx.core.creator;
     exports eulerfx.core.euler;
 }

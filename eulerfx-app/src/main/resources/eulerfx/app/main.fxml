@@ -15,7 +15,7 @@
             prefHeight="720.0" prefWidth="1280.0">
 
     <center>
-        <ScrollPane>
+        <ScrollPane hvalue="0.5" vvalue="0.5">
             <Renderer fx:id="renderer" prefWidth="3840.0" prefHeight="2160.0" />
         </ScrollPane>
     </center>
@@ -43,7 +43,11 @@
     </top>
 
     <bottom>
-        <Text text="BOT" />
+        <HBox alignment="CENTER_RIGHT">
+
+            <Text text="Zoom: (%)" />
+            <Slider fx:id="sliderZoom" min="0.5" max="1.0" />
+        </HBox>
     </bottom>
 
     <left>
@@ -58,7 +62,5 @@
             <Button text="DE" />
         </VBox>
     </left>
-
-
 
 </BorderPane>

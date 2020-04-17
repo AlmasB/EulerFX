@@ -4,6 +4,7 @@ import eulerfx.core.creator.EulerDiagramCreator
 import eulerfx.core.euler.Description
 import javafx.fxml.FXML
 import javafx.scene.control.Alert
+import javafx.scene.control.Slider
 import javafx.scene.control.TextField
 
 /**
@@ -17,6 +18,14 @@ class AppController {
 
     @FXML
     private lateinit var fieldInput: TextField
+
+    @FXML
+    private lateinit var sliderZoom: Slider
+
+    fun initialize() {
+        renderer.scaleXProperty().bind(sliderZoom.valueProperty())
+        renderer.scaleYProperty().bind(sliderZoom.valueProperty())
+    }
 
     fun visualize() {
         val description = Description.from(fieldInput.text)

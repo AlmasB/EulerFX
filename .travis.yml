@@ -1,0 +1,28 @@
+os:
+  - linux
+
+# Ubuntu 16.04
+dist: xenial
+language: java
+cache:
+  directories:
+  - "~/.m2"
+services:
+  - xvfb
+jdk:
+- openjdk12
+- openjdk13
+- openjdk14
+
+before_install:
+- echo "before_install NOOP"
+install:
+- echo "install NOOP"
+after_success:
+- bash <(curl -s https://codecov.io/bash)
+notifications:
+  email:
+    recipients:
+    - almaslvl@gmail.com
+    on_success: change
+    on_failure: always

@@ -70,6 +70,10 @@ class AppController {
         })
     }
 
+    fun saveAsPNG() {
+
+    }
+
     fun showSettingsDialog() {
 
     }

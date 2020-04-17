@@ -3,8 +3,6 @@ package eulerfx.core.creator
 import eulerfx.core.algorithms.smoothPath
 import eulerfx.core.decomposition.dec
 import eulerfx.core.decomposition.decA
-import eulerfx.core.decomposition.isAtomic
-import eulerfx.core.decomposition.isConnected
 import eulerfx.core.euler.*
 import eulerfx.core.euler.curves.CircleCurve
 import eulerfx.core.euler.curves.PathCurve
@@ -12,7 +10,6 @@ import eulerfx.core.euler.dual.MED
 import eulerfx.core.euler.dual.MEDCycle
 import eulerfx.core.recomposition.PiercingData
 import eulerfx.core.recomposition.RecompositionStep
-import eulerfx.core.util.Log
 import eulerfx.core.util.Profiler
 import javafx.geometry.Point2D
 import javafx.geometry.Rectangle2D
@@ -21,23 +18,6 @@ import javafx.scene.shape.ClosePath
 import javafx.scene.shape.MoveTo
 import javafx.scene.shape.Path
 import java.lang.Math.sqrt
-import java.util.stream.Stream
-
-// special case when there is no single curve present
-
-//val minAZSize = Z(D0).minus(azEmpty).map { it.labels.size }.min()!!
-
-//        if (minAZSize > 1) {
-//            val labels = D0.labels.sortedByDescending { D0.getNumZonesIn(it) }
-//
-//            var result = D0.getInformalDescription()
-//
-//            for (i in 2..minAZSize) {
-//                result += " " + labels.take(i-1).joinToString("")
-//            }
-//
-//            D = groupnet.euler.D(result)
-//        }
 
 /**
  *
@@ -62,14 +42,6 @@ class EulerDiagramCreator {
     private var d: EulerDiagram = EulerDiagram(D0, D0, emptySet())
 
     fun drawEulerDiagram(D: Description): EulerDiagram {
-        if (isConnected(Z(D).toList() - azEmpty)) {
-            Profiler.start("dec()")
-            val dec = dec(D).reversed()
-            Profiler.end("dec()")
-
-            return drawAtomicDiagram(D, dec)
-        }
-
         Profiler.start("decA()")
 
         val components = decA(D)

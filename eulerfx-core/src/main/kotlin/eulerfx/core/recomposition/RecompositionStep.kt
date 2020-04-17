@@ -1,6 +1,9 @@
 package eulerfx.core.recomposition
 
-import eulerfx.core.euler.*
+import eulerfx.core.euler.AbstractZone
+import eulerfx.core.euler.Description
+import eulerfx.core.euler.L
+import eulerfx.core.euler.Label
 
 /**
  * Single recomposition step.

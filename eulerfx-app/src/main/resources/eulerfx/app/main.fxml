@@ -23,7 +23,9 @@
     <top>
         <HBox>
             <MenuBar>
-                <Menu fx:id="menuFile" text="File" />
+                <Menu fx:id="menuFile" text="File">
+                    <MenuItem text="Save as .png" onAction="#saveAsPNG" />
+                </Menu>
             </MenuBar>
 
             <MenuBar>

@@ -1,8 +1,6 @@
 package eulerfx.core.decomposition
 
 import eulerfx.core.algorithms.combinations2
-import eulerfx.core.algorithms.partition2
-import eulerfx.core.algorithms.partition2Lazy
 import eulerfx.core.algorithms.partition2LazyStream
 import eulerfx.core.euler.*
 import org.jgrapht.alg.connectivity.ConnectivityInspector
@@ -20,13 +18,11 @@ fun isAtomic(D: Description): Boolean {
     if (Z.size == 1 && L(D).size > 1)
         return false
 
-    return isConnected(Z.toList())
-    //return canSplit(D) == null
+    //return isConnected(Z.toList())
+    return canSplit(D) == null
 }
 
 internal fun isConnected(zones: List<AbstractZone>): Boolean {
-    println("isConnected: $zones")
-
     val graph = SimpleGraph<AbstractZone, ZoneEdge>(ZoneEdge::class.java)
 
     zones.forEach { graph.addVertex(it) }

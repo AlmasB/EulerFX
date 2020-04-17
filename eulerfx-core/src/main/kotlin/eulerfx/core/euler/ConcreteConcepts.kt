@@ -2,7 +2,6 @@ package eulerfx.core.euler
 
 import eulerfx.core.algorithms.visualCenter
 import javafx.geometry.Point2D
-import javafx.geometry.Rectangle2D
 import javafx.scene.shape.Shape
 import math.geom2d.polygon.MultiPolygon2D
 import math.geom2d.polygon.Polygon2D

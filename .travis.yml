@@ -11,8 +11,6 @@ services:
   - xvfb
 jdk:
 - openjdk12
-- openjdk13
-- openjdk14
 
 before_install:
 - echo "before_install NOOP"
